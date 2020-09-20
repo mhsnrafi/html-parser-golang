@@ -258,11 +258,8 @@ func main() {
 	//Init Router
 	r := mux.NewRouter()
 
-	//Mock Data @todo - implement DB
-	htmlresponse =
-		append(htmlresponse,
-			HtmlResponse{ID: "2", HtmlVersion: "html5", PageTitle: "Book One"},
-		)
+	//Mock Sample Data @todo - implement DB
+	htmlresponse = append(htmlresponse, HtmlResponse{ID: "2", HtmlVersion: "html5", PageTitle: "Book One", ExternalLinksCount: 2, InternalLinksCount: 4, InaccessibleLinksCount: 5, IsLogin: false})
 
 	//Route Handlers Endpoints
 	r.HandleFunc("/api/response", getParserResponses).Methods("GET")
