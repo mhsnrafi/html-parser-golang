@@ -16,15 +16,15 @@ import (
 )
 
 type HtmlResponse struct {
-	ID                     string `json:"id"`
-	URL                    string `json:"url"`
-	PageTitle              string `json:"htmltitle"`
-	HtmlVersion            string `json:"htmlversion"`
-	HeadingCount           int    `json:"headingcount"`
-	ExternalLinksCount     int    `json:"externallink"`
-	InternalLinksCount     int    `json:"internalink"`
-	InaccessibleLinksCount int    `json:"inaccessible"`
-	IsLogin                bool   `json:"islogin"`
+	ID                     string         `json:"id"`
+	URL                    string         `json:"url"`
+	PageTitle              string         `json:"htmltitle"`
+	HtmlVersion            string         `json:"htmlversion"`
+	HeadingCount           map[string]int `json:"headingcount"`
+	ExternalLinksCount     int            `json:"externallink"`
+	InternalLinksCount     int            `json:"internalink"`
+	InaccessibleLinksCount int            `json:"inaccessible"`
+	IsLogin                bool           `json:"islogin"`
 }
 
 var htmlresponse []HtmlResponse
@@ -78,14 +78,15 @@ func deleteParserResponse(w http.ResponseWriter, r *http.Request) {
 func fetchParserResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var htmlresp HtmlResponse
+
 	_ = json.NewDecoder(r.Body).Decode(&htmlresp)
-	htmlresp = html_parser(htmlresp.URL)
-	htmlresp.ID = strconv.Itoa(rand.Intn(10)) //Mock ID - not safe
+	htmlresp = htmlParser(htmlresp.URL)
+	htmlresp.ID = strconv.Itoa(rand.Intn(10))
 	htmlresponse = append(htmlresponse, htmlresp)
 	json.NewEncoder(w).Encode(htmlresponse)
 }
 
-func html_parser(url string) HtmlResponse {
+func htmlParser(url string) HtmlResponse {
 	// Request the HTML page.
 	res, err := http.Get(url)
 	if err != nil {
@@ -103,14 +104,20 @@ func html_parser(url string) HtmlResponse {
 	}
 
 	pageContent := string(html)
-	//Get Page Title
+
+	//Create new document
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//Calling Requested Parameters
 	pageTitle := getTitle(pageContent)
-
-	//Calling Html Version
 	htmlVersion := getHtmlVersion(pageContent)
-
-	linksCounts, externalLinks := getCountoflinks(url)
+	linksCounts, externalLinks := getCountoflinks(doc)
 	inAccessibleLinksCount := getCountOfInAccessibleLink(externalLinks)
+	headingCountsByLevel := getHeadingCountsByLevel(doc)
+
 	resp := HtmlResponse{
 		URL:                    url,
 		PageTitle:              pageTitle,
@@ -118,22 +125,20 @@ func html_parser(url string) HtmlResponse {
 		ExternalLinksCount:     linksCounts["externallink"],
 		InternalLinksCount:     linksCounts["internallink"],
 		InaccessibleLinksCount: inAccessibleLinksCount,
+		HeadingCount:           headingCountsByLevel,
 	}
 
 	return resp
 }
 
 func getTitle(pageContent string) string {
-	// Find a title
 	titleStartIndex := strings.Index(pageContent, "<title>")
 	if titleStartIndex == -1 {
 		fmt.Println("No title element found")
 		os.Exit(0)
 	}
-	// The start index of the title is the index of the first
-	// character, the < symbol. We don't want to include
-	// <title> as part of the final value, so let's offset
-	// the index by the number of characers in <title>
+
+	// <title> as part of the tag, so let's offset the index by the number of characers in <title>
 	titleStartIndex += 7
 
 	// Find the index of the closing tag
@@ -143,14 +148,9 @@ func getTitle(pageContent string) string {
 		os.Exit(0)
 	}
 
-	// (Optional)
-	// Copy the substring in to a separate variable so the
-	// variables with the full document data can be garbage collected
 	pageTitle := []byte(pageContent[titleStartIndex:titleEndIndex])
 
-	// Print out the result
 	return string(pageTitle)
-
 }
 
 func getHtmlVersion(pageContent string) string {
@@ -170,18 +170,13 @@ func getHtmlVersion(pageContent string) string {
 	return "No version found"
 }
 
-func getCountoflinks(pageurl string) (map[string]int, []string) {
+func getCountoflinks(doc *goquery.Document) (map[string]int, []string) {
 	linkscountMap := make(map[string]int)
 	var links []string
-	doc, err := goquery.NewDocument(pageurl)
 	var externalLinkCount, internalLinkCount int
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	doc.Find("a[href]").Each(func(index int, item *goquery.Selection) {
 		href, _ := item.Attr("href")
-		//fmt.Printf("link: %s - anchor text: %s\n", href, item.Text())
 		if strings.Contains(href, "http://") || strings.Contains(href, "https://") {
 			externalLinkCount += 1
 			links = append(links, href)
@@ -210,6 +205,22 @@ func getCountOfInAccessibleLink(extlinks []string) int {
 	return count
 }
 
+func getHeadingCountsByLevel(doc *goquery.Document) map[string]int {
+	count := 0
+	var headingLevels = []string{"h1", "h2", "h3", "h4", "h5", "h6"}
+	headingCount := make(map[string]int)
+
+	for _, head := range headingLevels {
+		doc.Find(head).Each(func(index int, item *goquery.Selection) {
+			count += 1
+			headingCount[head] = count
+		})
+		count = 0
+	}
+	return headingCount
+
+}
+
 func main() {
 	//Init Router
 	r := mux.NewRouter()
@@ -217,7 +228,7 @@ func main() {
 	//Mock Data @todo - implement DB
 	htmlresponse =
 		append(htmlresponse,
-			HtmlResponse{ID: "2", HtmlVersion: "html5", PageTitle: "Book One", HeadingCount: 5},
+			HtmlResponse{ID: "2", HtmlVersion: "html5", PageTitle: "Book One"},
 		)
 
 	//Route Handlers  /Exnpoints
