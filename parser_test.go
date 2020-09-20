@@ -14,21 +14,20 @@ import (
 )
 
 type HtmlResponse struct {
-	ID                     string `json:"id"`
-	URL                    string `json:"url"`
-	PageTitle              string `json:"htmltitle"`
-	HtmlVersion            string `json:"htmlversion"`
-	HeadingCount           int    `json:"headingcount"`
-	ExternalLinksCount     int    `json:"externallink"`
-	InternalLinksCount     int    `json:"internalink"`
-	InaccessibleLinksCount int    `json:"inaccessible"`
-	IsLogin                bool   `json:"islogin"`
+	ID                     string         `json:"id"`
+	URL                    string         `json:"url"`
+	PageTitle              string         `json:"htmltitle"`
+	HtmlVersion            string         `json:"htmlversion"`
+	HeadingCount           map[string]int `json:"headingcount"`
+	ExternalLinksCount     int            `json:"externallink"`
+	InternalLinksCount     int            `json:"internalink"`
+	InaccessibleLinksCount int            `json:"inaccessible"`
+	IsLogin                bool           `json:"islogin"`
 }
 
 func Test_StatusCodeShouldEqual200(t *testing.T) {
 
 	client := resty.New()
-
 	resp, _ := client.R().Get("http://localhost:8100/api/response/7")
 
 	if resp.StatusCode() != 200 {
@@ -39,7 +38,6 @@ func Test_StatusCodeShouldEqual200(t *testing.T) {
 func Test_ContentTypeShouldEqualApplicationJson(t *testing.T) {
 
 	client := resty.New()
-
 	resp, _ := client.R().Get("http://localhost:8100/api/response/7")
 
 	assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
@@ -50,7 +48,7 @@ func Test_GetResponseShouldEqualToMockResponse(t *testing.T) {
 		Timeout: time.Second * 2, // Timeout after 2 seconds
 	}
 	//Here we call our api and get the json response
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8100/api/response/7", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8100/api/response/1", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,9 +75,14 @@ func Test_GetResponseShouldEqualToMockResponse(t *testing.T) {
 		log.Fatal(jsonErr)
 	}
 
-	assert.Equal(t, "Get the content of a web page (golang) | DaniWeb", response.PageTitle)
+	assert.Equal(t, "Juliana Bicycles | The Original Women's Mountain Bike", response.PageTitle)
 	assert.Equal(t, "html5", response.HtmlVersion)
-	assert.Equal(t, 1, response.ExternalLinksCount)
-	assert.Equal(t, 81, response.InternalLinksCount)
+	assert.Equal(t, 59, response.ExternalLinksCount)
+	assert.Equal(t, 170, response.InternalLinksCount)
 	assert.Equal(t, 0, response.InaccessibleLinksCount)
+	assert.Equal(t, 9, response.HeadingCount["h1"])
+	assert.Equal(t, 41, response.HeadingCount["h2"])
+	assert.Equal(t, 4, response.HeadingCount["h3"])
+	assert.Equal(t, 4, response.HeadingCount["h4"])
+	assert.Equal(t, false, response.IsLogin)
 }

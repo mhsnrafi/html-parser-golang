@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -113,6 +112,7 @@ func htmlParser(url string) HtmlResponse {
 
 	//Calling Requested Parameters
 	pageTitle := getTitle(pageContent)
+	islogin := checklogin(doc, pageContent)
 	htmlVersion := getHtmlVersion(pageContent)
 	linksCounts, externalLinks := getCountoflinks(doc)
 	inAccessibleLinksCount := getCountOfInAccessibleLink(externalLinks)
@@ -126,6 +126,7 @@ func htmlParser(url string) HtmlResponse {
 		InternalLinksCount:     linksCounts["internallink"],
 		InaccessibleLinksCount: inAccessibleLinksCount,
 		HeadingCount:           headingCountsByLevel,
+		IsLogin:                islogin,
 	}
 
 	return resp
@@ -135,7 +136,6 @@ func getTitle(pageContent string) string {
 	titleStartIndex := strings.Index(pageContent, "<title>")
 	if titleStartIndex == -1 {
 		fmt.Println("No title element found")
-		os.Exit(0)
 	}
 
 	// <title> as part of the tag, so let's offset the index by the number of characers in <title>
@@ -144,13 +144,12 @@ func getTitle(pageContent string) string {
 	// Find the index of the closing tag
 	titleEndIndex := strings.Index(pageContent, "</title>")
 	if titleEndIndex == -1 {
-		fmt.Println("No closing tag for title found.")
-		os.Exit(0)
+		return "No closing tag for title found."
 	}
 
-	pageTitle := []byte(pageContent[titleStartIndex:titleEndIndex])
+	pageTitle := string([]byte(pageContent[titleStartIndex:titleEndIndex]))
 
-	return string(pageTitle)
+	return pageTitle
 }
 
 func getHtmlVersion(pageContent string) string {
@@ -217,8 +216,42 @@ func getHeadingCountsByLevel(doc *goquery.Document) map[string]int {
 		})
 		count = 0
 	}
+
 	return headingCount
 
+}
+
+func checklogin(doc *goquery.Document, pagecontent string) bool {
+	flag := 0
+	var str = []string{"sign in", "login"}
+
+	if StringInSlice(strings.ToLower(getTitle(pagecontent)), str) {
+		flag = 1
+	} else {
+		doc.Find("input").Each(func(i int, s *goquery.Selection) {
+			name, ok := s.Attr("name")
+			if ok {
+				if strings.Contains(strings.ToLower(name), "password") {
+					flag = 1
+				}
+			}
+		})
+	}
+
+	if flag == 1 {
+		return true
+	}
+	return false
+}
+
+//StringInSlice return true if string s is present in slice list, else false
+func StringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if strings.Contains(a, b) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -231,7 +264,7 @@ func main() {
 			HtmlResponse{ID: "2", HtmlVersion: "html5", PageTitle: "Book One"},
 		)
 
-	//Route Handlers  /Exnpoints
+	//Route Handlers Endpoints
 	r.HandleFunc("/api/response", getParserResponses).Methods("GET")
 	r.HandleFunc("/api/response/{id}", getParserResponse).Methods("GET")
 	r.HandleFunc("/api/response", fetchParserResponse).Methods("POST")
