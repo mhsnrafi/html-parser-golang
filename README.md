@@ -1,6 +1,8 @@
-### Html Parser
+### GO Lang Html Parser
+RESTful API to create, read, update and delete html response. No database implementation yet
 
-* Install `mux` from web
+### Quick Start
+* Install `mux` mux router
 * Install `goquery` from web
 ```
 $ go get -u github.com/gorilla/mux
@@ -17,16 +19,27 @@ Get started with trial version.
 
 
 
-### Development tips
+### Endpoints
 
-For Post request `http://localhost:8100/api/response`:
+### Get All Responses
+GET `http://localhost:8100/api/response`:
+
+### Get Single Response
+GET `http://localhost:8100/api/response{id}`:
+
+### Delete Response
+DELETE `http://localhost:8100/api/response/{id}`:
+
+
+### Create Response
+POST `http://localhost:8100/api/response`:
 ```
 # body parameter:
 {
     "url": "https://www.julianabicycles.com/en-US""
 }
 
-request response:
+Request sample:
 {
     "id": "1",
     "url": "https://www.julianabicycles.com/en-US",
@@ -45,18 +58,33 @@ request response:
 }
 ```
 
-For Put request `http://localhost:8100/api/response/{id}`:
+### Update Response
+PUT `http://localhost:8100/api/response/{id}`:
 
 ```
 # body parameter:
 {
     "id": "3"
 }
+
+
+Request sample:
+{
+    "id": "3",
+    "url": "https://www.julianabicycles.com/en-US",
+    "htmltitle": "Juliana Bicycles | The Original Women's Mountain Bike",
+    "htmlversion": "html5",
+    "headingcount": {
+        "h1": 9,
+        "h2": 41,
+        "h3": 4,
+        "h4": 4
+    },
+    "externallink": 59,
+    "internalink": 170,
+    "inaccessible": 0,
+    "islogin": false
+}
 ```
 
-For Get request `http://localhost:8100/api/response`:
-
-For Get request by id `http://localhost:8100/api/response{id}`:
-
-For Delete request `http://localhost:8100/api/response/{id}`:
 
